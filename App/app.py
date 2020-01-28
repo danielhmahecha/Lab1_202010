@@ -40,19 +40,20 @@ def loadCSVFile (file, lst, sep=";"):
     t1_start = process_time() #tiempo inicial
     dialect = csv.excel()
     dialect.delimiter=sep
-    with open(file, encoding="utf-8") as csvfile:
+    with open(file, encoding="utf-8-sig") as csvfile:
         spamreader = csv.DictReader(csvfile, dialect=dialect)
         for row in spamreader: 
             lst.append(row)
     t1_stop = process_time() #tiempo final
     print("Tiempo de ejecución ",t1_stop-t1_start," segundos")
+    
 
 def printMenu():
     """
     Imprime el menu de opciones
     """
     print("\nBienvenido")
-    print("1- Cargar Datos")
+    print("1- Cargar Datos Archivos")
     print("2- Contar los elementos de la Lista")
     print("3- Contar elementos filtrados por palabra clave")
     print("4- Consultar elementos a partir de dos listas")
@@ -75,34 +76,96 @@ def countElementsFilteredByColumn(criteria, column, lst):
         print("Tiempo de ejecución ",t1_stop-t1_start," segundos")
     return counter
 
-def countElementsByCriteria(criteria, column, lst):
+def countElementsByCriteria(criteria, column, lst1, lst2, lst3, lst4):
     """
     Retorna la cantidad de elementos que cumplen con un criterio para una columna dada
     """
-    return 0
 
+    if len(lst1)==0 or len(lst2)==0:
+        print("Alguna lista esta vacía")  
+        return 0
+    else:
+        #en primer lugar busco las películas que cumplen la condicion en los archivos de menor tamaño
+
+        t1_start = process_time() #tiempo inicial
+
+        listaIds = [] #se instancia lista para los Ids de las películas del director
+
+        for element in lst1:   #se crea una lista con los Ids de las películas del director
+            if criteria.lower() in element[column].lower():
+                listaIds.append(element["id"])
+
+        counterSmall=0
+        for a in listaIds:  #se busca en la lista con detalles de las películas aquellas con el id guardado que tengan puntaje igual o mayor a 6
+            for b in lst2:
+                
+                if int(a) == int(b["id"]) and float(b["vote_average"]) >= 6: 
+                    counterSmall=counterSmall+1
+
+        
+        t1_stop = process_time() #tiempo final
+        print("Tiempo de ejecución archivos pequenos",t1_stop-t1_start," segundos")
+
+        #ahora busco las películas que cumplen la condicion en los archivos de mayor tamaño para comparar 
+
+        t2_start = process_time() #tiempo inicial
+
+        listaIdsAll = [] #se instancia lista para los Ids de las películas del director
+
+        for element in lst3:   #se crea una lista con los Ids de las películas del director
+            if criteria.lower() in element[column].lower():
+                listaIdsAll.append(element["id"])
+
+        counterAll=0
+        for a in listaIdsAll:  #se busca en la lista con detalles de las películas aquellas con el id guardado que tengan puntaje igual o mayor a 6
+            for b in lst4:
+                
+                if int(a) == int(b["id"]) and float(b["vote_average"]) >= 6: 
+                    counterAll=counterAll+1
+
+        
+        t2_stop = process_time() #tiempo final
+        print("Tiempo de ejecución archivos grandes",t2_stop-t2_start," segundos")
+
+        
+        answer =  "El criterio seleccionado fue: "+criteria+"\nCoinciden "+str(counterSmall)+" películas con vote_average igual o mayor a 6 con los archivos pequeños. \nCoinciden "+str(counterAll)+" peliculas con vote_average igual o mayor a 6 con los archivos grandes."
+        return answer
+
+    """
+    La solución propuesta tendría una complejidad de orden O(n²) 
+    """
 
 def main():
-    lista = [] #instanciar una lista vacia
+    listaCast_small = [] #instanciar una lista vacia
+    listaDetails_small = []
+    listaCast_all = []
+    listaDetails_all = []
+
     while True:
         printMenu() #imprimir el menu de opciones en consola
         inputs =input('Seleccione una opción para continuar\n') #leer opción ingresada
         if len(inputs)>0:
             if int(inputs[0])==1: #opcion 1
-                loadCSVFile("Data/test.csv", lista) #llamar funcion cargar datos
-                print("Datos cargados, "+str(len(lista))+" elementos cargados")
+                loadCSVFile("Data/MoviesCastingRaw-small.csv", listaCast_small) #llamar funcion cargar datos
+                print("Datos cargados, "+str(len(listaCast_small))+" elementos cargados")
+                loadCSVFile("Data/SmallMoviesDetailsCleaned.csv",listaDetails_small) #llamar funcioń cargar datos del otro archivo
+                print("Datos cargados, "+str(len(listaDetails_small))+" elementos cargados")
+                loadCSVFile("Data/AllMoviesCastingRaw.csv", listaCast_all) #archivo grande
+                print("Datos cargados, "+str(len(listaCast_all))+" elementos cargados")
+                loadCSVFile("Data/AllMoviesDetailsCleaned.csv",listaDetails_all) #archivo grande
+                print("Datos cargados, "+str(len(listaDetails_all))+" elementos cargados")
             elif int(inputs[0])==2: #opcion 2
                 if len(lista)==0: #obtener la longitud de la lista
                     print("La lista esta vacía")    
-                else: print("La lista tiene "+str(len(lista))+" elementos")
+                else: print("La lista tiene "+str(len(listaCast_small))+" elementos")
             elif int(inputs[0])==3: #opcion 3
                 criteria =input('Ingrese el criterio de búsqueda\n')
-                counter=countElementsFilteredByColumn(criteria, "nombre", lista) #filtrar una columna por criterio  
+                counter=countElementsFilteredByColumn(criteria, "actor1_name", listaCast_small) #filtrar una columna por criterio  
                 print("Coinciden ",counter," elementos con el crtierio: ", criteria  )
             elif int(inputs[0])==4: #opcion 4
                 criteria =input('Ingrese el criterio de búsqueda\n')
-                counter=countElementsByCriteria(criteria,0,lista)
-                print("Coinciden ",counter," elementos con el crtierio: '", criteria ,"' (en construcción ...)")
+                answer=countElementsByCriteria(criteria,"director_name",listaCast_small,listaDetails_small,listaCast_all,listaDetails_all)
+                print(answer)
             elif int(inputs[0])==0: #opcion 0, salir
                 sys.exit(0)
 
